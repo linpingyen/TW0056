@@ -41,9 +41,11 @@
         .master-title { font-size: 12px; color: #8e8e93; font-weight: 600; margin-bottom: 6px; }
         .master-status-text { font-size: 16px; font-weight: 900; }
 
-        .price-box { text-align: center; padding: 16px; background: var(--card-bg); border-radius: 14px; border: 1px solid var(--border-color); margin-bottom: 16px; }
-        .price-title { font-size: 12px; color: #8e8e93; }
-        .price-value { font-size: 32px; font-weight: 800; margin-top: 4px; color: #ffffff; }
+        .price-box { padding: 14px; background: var(--card-bg); border-radius: 14px; border: 1px solid var(--border-color); margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: center; }
+        .price-item { display: flex; flex-direction: column; justify-content: center; }
+        .price-title { font-size: 11px; color: #8e8e93; }
+        .price-value { font-size: 24px; font-weight: 800; margin-top: 4px; color: #ffffff; }
+        .ma-value { color: var(--blue) !important; }
 
         .card { background: var(--card-bg); border-radius: 14px; padding: 14px; margin-bottom: 12px; border: 1px solid var(--border-color); }
         .card-header-title { font-size: 14px; font-weight: 700; color: var(--yellow); margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
@@ -55,9 +57,9 @@
         .mini-light { width: 12px; height: 12px; border-radius: 50%; background-color: #48484a; }
         .mini-text { font-size: 12px; font-weight: 700; font-family: monospace; }
 
-        .result-box { text-align: center; padding: 20px; border-radius: 14px; margin-bottom: 16px; }
-        .result-box h3 { margin: 0; font-size: 13px; color: #8e8e93; }
-        .order-amount { font-size: 32px; font-weight: 900; margin: 8px 0; }
+        .result-box { text-align: center; padding: 20px; border-radius: 14px; margin-bottom: 16px; transition: all 0.3s ease; }
+        .result-box h3 { margin: 0; font-size: 13px; color: #8e8e93; font-weight: 700; }
+        .order-amount { font-size: 28px; font-weight: 900; margin: 8px 0; letter-spacing: 0.5px; }
         .strategy-desc { font-size: 13px; color: #f2f2f7; line-height: 1.5; text-align: justify; }
 
         .loading-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 24px; text-align: center; margin-top: 40px; }
@@ -76,66 +78,72 @@
 <body>
 
 <div class="container">
-    <h1>元大高股息 (0056) 防禦系統</h1>
-    <div class="subtitle">雙時空幾何矩陣 · 存股指揮官</div>
+    <h1>0056 雙時空存股防禦系統</h1>
+    <div class="subtitle">每日動態監控 · 20MA偏離度扳機</div>
 
     <div id="loading-box" class="loading-box">
-        <div style="font-size: 16px; font-weight: bold; color: #ffffff;">📊 正在向台灣證券交易所同步 0056 數據...</div>
+        <div style="font-size: 16px; font-weight: bold; color: #ffffff;">📊 正在同步 0056 交易所最新數據...</div>
         <div class="progress-container"><div id="progress-bar" class="progress-bar"></div></div>
     </div>
     
     <div id="dashboard" style="display: none;">
         <div class="master-grid">
             <div id="box-1d" class="master-signal-box">
-                <div class="master-title">日線決策 (1d)</div>
-                <div id="status-1d" class="master-status-text">計算中</div>
+                <div class="master-title">日線級別 (1d)</div>
+                <div id="status-1d" class="master-status-text">解算中</div>
             </div>
             <div id="box-1w" class="master-signal-box">
-                <div class="master-title">週線決策 (1w)</div>
-                <div id="status-1w" class="master-status-text">計算中</div>
+                <div class="master-title">週線級別 (1w)</div>
+                <div id="status-1w" class="master-status-text">解算中</div>
             </div>
         </div>
 
         <div class="price-box">
-            <div class="price-title">0056 當前最新收盤價</div>
-            <div id="stock-price" class="price-value">$0.00</div>
+            <div class="price-item">
+                <div class="price-title">今日收盤價</div>
+                <div id="stock-price" class="price-value">$0.00</div>
+            </div>
+            <div class="price-item" style="border-left: 1px solid var(--border-color);">
+                <div class="price-title">20日均線基進線</div>
+                <div id="ma-price" class="price-value ma-value">$0.00</div>
+            </div>
         </div>
 
         <div id="decision-box" class="card result-box">
-            <h3 id="decision-title">存股防禦應對策略</h3>
+            <h3 id="decision-title">今日行動指南</h3>
             <div id="order-value" class="order-amount">評估中</div>
-            <div id="strategy-text" class="strategy-desc">正在等待指揮官防禦閘門評估...</div>
+            <div id="strategy-text" class="strategy-desc">正在等待防禦閘門進行動態解算...</div>
         </div>
 
         <div class="card">
-            <div class="card-header-title">🛡️ 統計與相空間雷達指標</div>
+            <div class="card-header-title">🛡️ 統計與動態幾何指標</div>
             <div class="radar-row">
-                <div class="radar-meta"><h4>日線級別 RSI (安全邊界 < 65)</h4></div>
+                <div class="radar-meta"><h4>日線相對強弱 RSI (過熱閥值: 65)</h4></div>
                 <div class="radar-value"><div id="rsi-1d-light" class="mini-light"></div>&nbsp;<div id="rsi-1d-text" class="mini-text">-</div></div>
             </div>
             <div class="radar-row">
-                <div class="radar-meta"><h4>週線級別 RSI (安全邊界 < 70)</h4></div>
+                <div class="radar-meta"><h4>週線宏觀動能 RSI (過熱閥值: 70)</h4></div>
                 <div class="radar-value"><div id="rsi-1w-light" class="mini-light"></div>&nbsp;<div id="rsi-1w-text" class="mini-text">-</div></div>
             </div>
             <div class="radar-row">
-                <div class="radar-meta"><h4>夏農資訊熵 (日線混亂度 < 2.40)</h4></div>
+                <div class="radar-meta"><h4>微觀夏農資訊熵 (洗盤閥值: 2.40)</h4></div>
                 <div class="radar-value"><div id="entropy-light" class="mini-light"></div>&nbsp;<div id="entropy-text" class="mini-text">-</div></div>
             </div>
         </div>
 
         <div class="guide-panel">
-            <div class="guide-title">🧭 存股防禦燈號實戰含意</div>
+            <div class="guide-title">🧭 每日防禦燈號實戰操作紀律</div>
             <div class="guide-row">
-                <div class="guide-tag green">🟢 正常加碼</div>
-                <div class="guide-text">時空乾淨安全，價格合理。適合維持定期定額，或逢低手動加碼。</div>
+                <div class="guide-tag green">🟢 准許獵殺</div>
+                <div class="guide-text">雙時空結構安全。此時若收盤價跌破 20日均線，代表抓到本月極佳相對低點，可果斷執行買入一張。</div>
             </div>
             <div class="guide-row">
-                <div class="guide-tag red">🔴 停止加碼</div>
-                <div class="guide-text">市場極度過熱，殖利率大幅高估。<strong>存股族應停止手動加碼</strong>，管住雙手。</div>
+                <div class="guide-tag yellow">🟡 噪訊觀望</div>
+                <div class="guide-text">市場隨機亂度過大，正處於震盪洗盤。今天管住雙手不手動加碼，靜待亂度冷卻。</div>
             </div>
             <div class="guide-row">
-                <div class="guide-tag yellow">🟡 觀望等待</div>
-                <div class="guide-text">市場處於高噪訊橫盤或下行初期，此時盲目攤平容易受傷，宜保持觀望。</div>
+                <div class="guide-tag red">🔴 極端過熱</div>
+                <div class="guide-text">股價嚴重高估，配息殖利率降至谷底。強制鎖死新台幣現金，今天絕對不買。</div>
             </div>
         </div>
     </div>
@@ -167,24 +175,35 @@ function calculateShannonEntropy(prices) {
     return entropy;
 }
 
+function calculateMA(prices, period) {
+    if (prices.length < period) return prices[prices.length - 1];
+    var sum = 0;
+    for (var i = prices.length - period; i < prices.length; i++) {
+        sum += prices[i];
+    }
+    return sum / period;
+}
+
 function processData() {
     var prices = rawKlines.map(function(d) { return d.close; });
     var currentPrice = prices[prices.length - 1];
+    var ma20 = calculateMA(prices, 20);
     
     document.getElementById('stock-price').innerText = '$' + currentPrice.toFixed(2);
+    document.getElementById('ma-price').innerText = '$' + ma20.toFixed(2);
 
-    // 1. 計算日線指標
+    // 1. 解算日線指標與夏農熵
     var rsi1d = calculateRSI(prices, 14);
     var entropy = calculateShannonEntropy(prices.slice(-20));
 
-    // 2. 抽取週線數據 (每5個交易日抽一個)
+    // 2. 解算週線數據 (每5個日線樣本抽樣為一週)
     var weekPrices = [];
     for(var i = prices.length - 1; i >= 0; i -= 5) {
         weekPrices.unshift(prices[i]);
     }
     var rsi1w = calculateRSI(weekPrices, 14);
 
-    // 3. 判定時空狀態
+    // 3. 雙時空決策核心邏輯
     var status1d = "GREEN";
     if (rsi1d >= 65) status1d = "RED";
     else if (entropy > 2.40) status1d = "YELLOW";
@@ -192,36 +211,44 @@ function processData() {
     var status1w = "GREEN";
     if (rsi1w >= 70) status1w = "RED";
 
-    // 更新燈號介面
+    // 更新上層雙時空看板
     updateBox('box-1d', 'status-1d', status1d);
     updateBox('box-1w', 'status-1w', status1w);
 
-    // 更新細項雷達
+    // 更新微觀雷達細項
     updateRow('rsi-1d-light', 'rsi-1d-text', rsi1d.toFixed(1), rsi1d >= 65 ? '--red' : '--green');
     updateRow('rsi-1w-light', 'rsi-1w-text', rsi1w.toFixed(1), rsi1w >= 70 ? '--red' : '--green');
     updateRow('entropy-light', 'entropy-text', entropy.toFixed(2), entropy > 2.40 ? '--yellow' : '--green');
 
-    // 總體決策邏輯
+    // 4. 動態每日應對策略渲染
     var dBox = document.getElementById('decision-box');
     var dTitle = document.getElementById('decision-title');
     var dValue = document.getElementById('order-value');
     var dDesc = document.getElementById('strategy-text');
 
     if (status1d === "RED" || status1w === "RED") {
-        dBox.style.background = "rgba(255,59,48,0.1)"; dValue.style.color = "var(--red)";
-        dTitle.innerText = "🛑 殖利率過低，觸及過熱閘門";
-        dValue.innerText = "STOP BUYING";
-        dDesc.innerText = "【存股防禦警報】0056 目前在日線或週線級別進入嚴重超買過熱區（RSI過高），意味著此時股價昂貴、換算下來的配息殖利率偏低。此時「嚴禁手動單筆加碼」，定期定額可考慮暫停或維持不動，管住雙手累積現金。";
+        dBox.style.background = "rgba(255,59,48,0.12)"; dValue.style.color = "var(--red)";
+        dTitle.innerText = "🚨 今日行動指南 · 極端過熱";
+        dValue.innerText = "FORBIDDEN / 嚴禁追高";
+        dDesc.innerText = "【殖利率嚴重高估】目前 0056 在巨觀或微觀時空已衝破超買天花板。此時溢價偏高，買入將嚴重稀釋配息殖利率。新台幣現金子彈請死死鎖在銀行帳戶中。請繼續保持天天看燈的紀律，耐心等待這盞紅燈熄滅轉綠的物理時刻。";
     } else if (status1d === "YELLOW") {
-        dBox.style.background = "rgba(255,204,0,0.1)"; dValue.style.color = "var(--yellow)";
-        dTitle.innerText = "🟡 市場亂度升高，進入洗盤觀望";
-        dValue.innerText = "HOLD CASH";
-        dDesc.innerText = "【夏農資訊熵攔截】目前日線隨機亂度超標，市場處於無序震盪或回檔初期。此時急著進場容易被套牢，建議保持觀望，等待結構冷卻。";
+        dBox.style.background = "rgba(255,204,0,0.12)"; dValue.style.color = "var(--yellow)";
+        dTitle.innerText = "🟡 今日行動指南 · 噪訊觀望";
+        dValue.innerText = "WAITING / 暫停動作";
+        dDesc.innerText = "【夏農資訊熵攔截】目前日線隨機亂度超標，市場多空拉鋸劇烈，屬於無序洗盤盤整期。今天請管住雙手，不要盲目在大洗盤中單筆攤平。請明天同一時間繼續打開面板，靜待噪訊冷卻、綠燈重啟。";
     } else {
-        dBox.style.background = "rgba(52,199,89,0.1)"; dValue.style.color = "var(--green)";
-        dTitle.innerText = "🟢 雙時空共振安全，符合存股低吸";
-        dValue.innerText = "SAFE TO ACCUMULATE";
-        dDesc.innerText = "【常態進場區】目前 0056 週線與日線相位乾淨，未見隨機噪訊與過熱。此時價格處於統計合理區間，非常適合維持你的常態定期定額計畫，或在跌幅放大時分批手動低吸。";
+        // 總結變綠燈，進入 20MA 偏離度核心扳機判斷
+        if (currentPrice <= ma20) {
+            dBox.style.background = "rgba(52,199,89,0.15)"; dValue.style.color = "var(--green)";
+            dTitle.innerText = "🔥 今日行動指南 · 訊號觸發！";
+            dValue.innerText = "BUY TICK / 執行買入";
+            dDesc.innerText = `【當月極佳低吸點】目前雙時空環境安全乾淨，且今日收盤價 ($${currentPrice.toFixed(2)}) 已成功跌破 20日基準線 ($${ma20.toFixed(2)})！這在統計學上屬於本月難得的相對低點。若本月尚未手動敲進這一張，今天下午收盤前正是極佳的單筆進場狙擊時刻！`;
+        } else {
+            dBox.style.background = "rgba(52,199,89,0.06)"; dValue.style.color = "#8e8e93";
+            dTitle.innerText = "🟢 今日行動指南 · 准許獵殺 (觀望中)";
+            dValue.innerText = "STANDBY / 價格尚不夠低";
+            dDesc.innerText = `【大環境安全，等待回檔】目前 0056 雙時空結構乾淨安全，本月准許進場。然而，今日收盤價 ($${currentPrice.toFixed(2)}) 仍處於 20日基準線 ($${ma20.toFixed(2)}) 之上，意味著價格還不夠便宜。今天先不買，請明天繼續監控，等待價格跌破基準線的扳機時刻。`;
+        }
     }
 
     document.getElementById('loading-box').style.display = 'none';
@@ -246,7 +273,6 @@ function init() {
     var bar = document.getElementById('progress-bar');
     bar.style.width = '30%';
     
-    // 計算近100個交易日的日期（抓取約半年的歷史數據）
     var today = new Date();
     var halfYearAgo = new Date();
     halfYearAgo.setDate(today.getDate() - 180);
@@ -258,20 +284,20 @@ function init() {
         return y + '-' + m + '-' + d;
     };
 
-    // 使用 FinMind 公開數據節點（免金鑰）
+    // 串接免驗證的 FinMind 公開台股測試數據節點
     var url = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=0056&start_date=${formatDate(halfYearAgo)}&end_date=${formatDate(today)}`;
     
-    bar.style.width = '60%';
+    bar.style.width = '65%';
     fetch(url).then(function(res){ return res.json(); }).then(function(res){
         if(res.data && res.data.length > 0) {
             rawKlines = res.data;
             bar.style.width = '100%';
             processData();
         } else {
-            alert("數據節點異常，請稍後重試");
+            alert("交易所數據通道繁忙，請稍後重新整理");
         }
     }).catch(function(e){
-        alert("資料庫同步失敗，請檢查網路連線");
+        alert("網路連線受阻，未能成功載入數據");
     });
 }
 init();
