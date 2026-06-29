@@ -80,7 +80,7 @@
 
 <div class="container">
     <h1>0056 雙時空存股防禦系統</h1>
-    <div class="subtitle">每日動態監控 · 盤中即時拼接整合版</div>
+    <div class="subtitle">每日動態监控 · 免證交所驗證優化版</div>
 
     <div id="loading-box" class="loading-box">
         <div style="font-size: 16px; font-weight: bold; color: #ffffff;">📊 正在進行時空交織與數據校準...</div>
@@ -189,11 +189,9 @@ function calculateMA(prices, period) {
 }
 
 function processData() {
-    // 建立基礎歷史價矩陣
     var prices = rawHistoryKlines.map(function(d) { return d.close; });
     var lastHistoryDate = rawHistoryKlines[rawHistoryKlines.length - 1].date;
 
-    // 【核心物理拼接】：若今日有最新的盤中即時價，且與歷史最後一天不同天，則拼接進去
     if (realtimePrice && realtimeDate && realtimeDate !== lastHistoryDate) {
         prices.push(realtimePrice);
         document.getElementById('price-label').innerText = "盤中即時價";
@@ -207,18 +205,15 @@ function processData() {
     document.getElementById('stock-price').innerText = '$' + currentPrice.toFixed(2);
     document.getElementById('ma-price').innerText = '$' + ma20.toFixed(2);
 
-    // 1. 解算日線指標與夏農熵
     var rsi1d = calculateRSI(prices, 14);
     var entropy = calculateShannonEntropy(prices.slice(-20));
 
-    // 2. 解算週線數據
     var weekPrices = [];
     for(var i = prices.length - 1; i >= 0; i -= 5) {
         weekPrices.unshift(prices[i]);
     }
     var rsi1w = calculateRSI(weekPrices, 14);
 
-    // 3. 雙時空決策狀態判定
     var status1d = "GREEN";
     if (rsi1d >= 65) status1d = "RED";
     else if (entropy > 2.40) status1d = "YELLOW";
@@ -233,7 +228,6 @@ function processData() {
     updateRow('rsi-1w-light', 'rsi-1w-text', rsi1w.toFixed(1), rsi1w >= 70 ? '--red' : '--green');
     updateRow('entropy-light', 'entropy-text', entropy.toFixed(2), entropy > 2.40 ? '--yellow' : '--green');
 
-    // 4. 動態決策提示渲染
     var dBox = document.getElementById('decision-box');
     var dTitle = document.getElementById('decision-title');
     var dValue = document.getElementById('order-value');
@@ -299,53 +293,48 @@ function init() {
     bar.style.width = '20%';
     logStatus.innerText = "第一步：同步歷史證券交易所大數據...";
 
-    // 步驟 1：向 FinMind 拉取過去半年的歷史日線
     var historyUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=0056&start_date=${formatDate(halfYearAgo)}&end_date=${formatDate(today)}`;
     
     fetch(historyUrl).then(function(res){ return res.json(); }).then(function(res){
         if(res.data && res.data.length > 0) {
             rawHistoryKlines = res.data;
             bar.style.width = '60%';
-            logStatus.innerText = "第二步：交織台灣證交所盤中即時網路節點...";
+            logStatus.innerText = "第二步：交織穩定的盤中即時網路節點...";
             
-            // 步驟 2：向證交所官方 API 發送請求，獲取今日盤中此時此刻的最新價格
-            // 利用 CORS 代理通道繞過網頁跨網域限制
-            var proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent("https://mis.twse.gov.tw/stock/api/getStockInfo.jsp?ex_ch=tse_0056.tw");
-            
+            // 【優化改動核心】：拋棄嚴格 Cookie 限制的舊 API，改用免驗證跨域的 AllOrigins 橋接 Yahoo 財經 API
+            var proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/0056.TW?interval=1m&range=1d");
             return fetch(proxyUrl);
         } else {
-            throw new Error(" FinMind 節點繁忙");
+            throw new Error("FinMind 節點繁忙");
         }
     }).then(function(res){ return res.json(); }).then(function(wrapper){
         try {
             var data = JSON.parse(wrapper.contents);
-            if(data.msgArray && data.msgArray.length > 0) {
-                var info = data.msgArray[0];
-                // z: 最近成交價, z沒有代表開盤前此時用 y (昨收) 替代，或用最高最底綜合評估
-                var price = parseFloat(info.z || info.p || info.y);
-                if (!isNaN(price) && price > 0) {
-                    realtimePrice = price;
-                    // d: 證交所給的日期格式通常為 20260324，轉成 YYYY-MM-DD
-                    if(info.d && info.d.length === 8) {
-                        realtimeDate = info.d.substring(0,4) + '-' + info.d.substring(4,6) + '-' + info.d.substring(6,8);
-                    }
-                }
+            var result = data.chart.result[0];
+            var meta = result.meta;
+            var price = meta.regularMarketPrice; // 取得最新盤中價
+            
+            if (price && price > 0) {
+                realtimePrice = price;
+                // 轉換時間戳為當前本地日期格式 (YYYY-MM-DD)
+                var localTime = new Date(meta.regularMarketTime * 1000);
+                realtimeDate = formatDate(localTime);
+                console.log("成功校準盤中資料，最新價：" + realtimePrice + " 日期：" + realtimeDate);
             }
         } catch(e) {
-            console.log("盤中即時資料解析微瑕疵，將直接以昨日收盤為基準計算");
+            console.log("盤中即時資料解析微瑕疵，啟動保底機制：直接以最新歷史收盤為基準。");
         }
         
         bar.style.width = '100%';
         logStatus.innerText = "解算完畢，防禦閘門開啟。";
         processData();
     }).catch(function(e){
-        // 容錯防禦：即使即時 API 意外掛掉，依舊可以用歷史數據作保底解算
         console.error(e);
         if(rawHistoryKlines.length > 0) {
             bar.style.width = '100%';
             processData();
         } else {
-            alert("交易所數據通道中斷，請稍後再試");
+            alert("交易所數據通道中斷，請確認您的網路連線狀態。");
         }
     });
 }
