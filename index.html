@@ -36,7 +36,6 @@
         h1 { font-size: 24px; text-align: center; color: #ffffff; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.5px; }
         .subtitle { text-align: center; color: #8e8e93; font-size: 12px; margin-bottom: 20px; }
         
-        /* 升級版：極致明顯且有質感的蘋果藍更新按鈕 */
         .header-action { display: flex; justify-content: center; margin-bottom: 20px; width: 100%; }
         .refresh-btn {
             background: linear-gradient(135deg, #0a84ff 0%, #0056b3 100%);
@@ -73,7 +72,6 @@
             cursor: not-allowed;
         }
 
-        /* 時空級別燈號格線（現位於行動指南下方） */
         .master-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
         .master-signal-box { background: var(--card-bg); border-radius: 12px; padding: 14px 8px; text-align: center; border: 2px solid var(--border-color); transition: all 0.3s ease; }
         .master-title { font-size: 12px; color: #8e8e93; font-weight: 600; margin-bottom: 6px; }
@@ -361,6 +359,23 @@ function parseYahooData(jsonObj) {
     return false;
 }
 
+// 建立可控超時的 fetch 機制
+function fetchWithTimeout(url, options, timeoutMs) {
+    return new Promise(function(resolve, reject) {
+        var controller = new AbortController();
+        var signal = controller.signal;
+        var timeoutId = setTimeout(function() {
+            controller.abort();
+            reject(new Error("連線逾時中斷"));
+        }, timeoutMs);
+
+        fetch(url, Object.assign({}, options, { signal: signal }))
+            .then(resolve)
+            .catch(reject)
+            .finally(function() { clearTimeout(timeoutId); });
+    });
+}
+
 function executeSync() {
     var bar = document.getElementById('progress-bar');
     var logStatus = document.getElementById('log-status');
@@ -388,7 +403,8 @@ function executeSync() {
     bar.style.width = '30%';
     logStatus.innerText = "第一步：同步歷史證券交易所大數據...";
 
-    var historyUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=0056&start_date=${formatDate(halfYearAgo)}&end_date=${formatDate(today)}`;
+    // 歷史資料加時間戳防快取
+    var historyUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=0056&start_date=${formatDate(halfYearAgo)}&end_date=${formatDate(today)}&_=${Math.random()}`;
     
     fetch(historyUrl).then(function(res){ return res.json(); }).then(function(res){
         if(res.data && res.data.length > 0) {
@@ -396,17 +412,20 @@ function executeSync() {
             bar.style.width = '60%';
             logStatus.innerText = "第二步：交織智慧雙通道即時網路節點...";
             
-            var targetApi = "https://query1.finance.yahoo.com/v8/finance/chart/0056.TW?interval=1m&range=1d";
+            // Yahoo API 加隨機參數破壞 Proxy 快取，取得真即時數據
+            var targetApi = "https://query1.finance.yahoo.com/v8/finance/chart/0056.TW?interval=1m&range=1d&_cache=" + Math.random();
             var urlA = "https://api.allorigins.win/get?url=" + encodeURIComponent(targetApi);
             
-            return fetch(urlA).then(function(r){ return r.json(); }).then(function(wrapper){
+            // 核心優化：限制主通道 A 最多等 1500毫秒 (1.5秒)，超時直接滾去 B 通道
+            return fetchWithTimeout(urlA, {}, 1500).then(function(r){ return r.json(); }).then(function(wrapper){
                 var data = JSON.parse(wrapper.contents);
-                if(!parseYahooData(data)) throw new Error("A通道解析無效值");
-                console.log("主通道 A (AllOrigins) 連線成功");
+                if(!parseYahooData(data)) throw new Error("A通道無效值");
+                console.log("快捷通道 A (AllOrigins) 連線成功");
             }).catch(function(err){
-                console.warn("主通道 A 失敗，啟用備援通道 B...", err);
+                console.warn("通道 A 延遲觸發 1.5秒硬中斷，切換備援通道 B...", err);
                 var urlB = "https://corsproxy.io/?" + encodeURIComponent(targetApi);
-                return fetch(urlB).then(function(r){ return r.json(); }).then(function(data){
+                // 備援通道 B 同樣限制 2000毫秒 逾時
+                return fetchWithTimeout(urlB, {}, 2000).then(function(r){ return r.json(); }).then(function(data){
                     if(!parseYahooData(data)) throw new Error("B通道解析無效值");
                     console.log("備援通道 B (Corsproxy.io) 連線成功");
                 });
@@ -419,12 +438,12 @@ function executeSync() {
         logStatus.innerText = "解算完畢，防禦閘門開啟。";
         processData();
     }).catch(function(e){
-        console.error("即時雙代理皆失效，將直接以最新歷史收盤為基準。", e);
+        console.error("即時雙代理皆超時，啟動末線保底機制：以交易所最新歷史收盤為準。", e);
         if(rawHistoryKlines.length > 0) {
             bar.style.width = '100%';
             processData();
         } else {
-            alert("交易所數據通道中斷，請確認您的網路連線狀態。");
+            alert("交易所數據通道中斷，請檢查網路連線。");
         }
     }).finally(function(){
         refreshBtn.disabled = false;
@@ -432,7 +451,6 @@ function executeSync() {
     });
 }
 
-// 頁面初次自動執行
 executeSync();
 </script>
 </body>
