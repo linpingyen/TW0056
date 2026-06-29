@@ -34,17 +34,37 @@
         }
         .container { width: 100%; max-width: 450px; }
         h1 { font-size: 22px; text-align: center; color: #ffffff; font-weight: 700; margin-bottom: 4px; }
-        .subtitle { text-align: center; color: #8e8e93; font-size: 12px; margin-bottom: 16px; }
+        .subtitle { text-align: center; color: #8e8e93; font-size: 12px; margin-bottom: 12px; }
         
+        /* 更新按鈕樣式 */
+        .header-action { display: flex; justify-content: center; margin-bottom: 16px; }
+        .refresh-btn {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .refresh-btn:hover { background-color: #1c232e; border-color: #313d4b; }
+        .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
         .master-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
         .master-signal-box { background: var(--card-bg); border-radius: 12px; padding: 14px 8px; text-align: center; border: 2px solid var(--border-color); transition: all 0.3s ease; }
         .master-title { font-size: 12px; color: #8e8e93; font-weight: 600; margin-bottom: 6px; }
         .master-status-text { font-size: 16px; font-weight: 900; }
 
         .price-box { padding: 14px; background: var(--card-bg); border-radius: 14px; border: 1px solid var(--border-color); margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: center; }
-        .price-item { display: flex; flex-direction: column; justify-content: center; }
+        .price-item { display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .price-title { font-size: 11px; color: #8e8e93; }
         .price-value { font-size: 24px; font-weight: 800; margin-top: 4px; color: #ffffff; }
+        .price-change { font-size: 11px; font-weight: 700; margin-top: 2px; }
         .ma-value { color: var(--blue) !important; }
 
         .card { background: var(--card-bg); border-radius: 14px; padding: 14px; margin-bottom: 12px; border: 1px solid var(--border-color); }
@@ -80,7 +100,13 @@
 
 <div class="container">
     <h1>0056 雙時空存股防禦系統</h1>
-    <div class="subtitle">每日動態监控 · 免證交所驗證優化版</div>
+    <div class="subtitle">每日動態監控 · 智慧雙通道抗卡死版</div>
+
+    <div class="header-action">
+        <button id="refresh-btn" class="refresh-btn" onclick="executeSync()">
+            <span>🔄</span> <span id="refresh-btn-text">更新股價與防禦燈號</span>
+        </button>
+    </div>
 
     <div id="loading-box" class="loading-box">
         <div style="font-size: 16px; font-weight: bold; color: #ffffff;">📊 正在進行時空交織與數據校準...</div>
@@ -104,10 +130,12 @@
             <div class="price-item">
                 <div class="price-title" id="price-label">即時成交價</div>
                 <div id="stock-price" class="price-value">$0.00</div>
+                <div id="stock-change" class="price-change">--</div>
             </div>
             <div class="price-item" style="border-left: 1px solid var(--border-color);">
                 <div class="price-title">動態 20日均線</div>
                 <div id="ma-price" class="price-value ma-value">$0.00</div>
+                <div style="font-size: 11px; color: #8e8e93; margin-top:2px;">防禦基準線</div>
             </div>
         </div>
 
@@ -155,6 +183,8 @@
 var rawHistoryKlines = [];
 var realtimePrice = null;
 var realtimeDate = null;
+var realtimeChangeText = "";
+var realtimeChangeColor = "#8e8e93";
 
 function calculateRSI(prices, periods) {
     if (prices.length <= periods) return 50;
@@ -203,6 +233,11 @@ function processData() {
     var ma20 = calculateMA(prices, 20);
     
     document.getElementById('stock-price').innerText = '$' + currentPrice.toFixed(2);
+    
+    var changeDiv = document.getElementById('stock-change');
+    changeDiv.innerText = realtimeChangeText || "--";
+    changeDiv.style.color = realtimeChangeColor;
+
     document.getElementById('ma-price').innerText = '$' + ma20.toFixed(2);
 
     var rsi1d = calculateRSI(prices, 14);
@@ -275,10 +310,54 @@ function updateRow(lightId, textId, value, colorVar) {
     document.getElementById(textId).style.color = 'var(' + colorVar + ')';
 }
 
-function init() {
+function parseYahooData(jsonObj) {
+    var result = jsonObj.chart.result[0];
+    var meta = result.meta;
+    var price = meta.regularMarketPrice;
+    
+    if (price && price > 0) {
+        realtimePrice = price;
+        var prevClose = meta.previousClose;
+        var change = price - prevClose;
+        var changePercent = (change / prevClose) * 100;
+        
+        if (change > 0) {
+            realtimeChangeText = "▲ +" + change.toFixed(2) + " (+" + changePercent.toFixed(2) + "%)";
+            realtimeChangeColor = "var(--red)";
+        } else if (change < 0) {
+            realtimeChangeText = "▼ " + change.toFixed(2) + " (" + changePercent.toFixed(2) + "%)";
+            realtimeChangeColor = "var(--green)";
+        } else {
+            realtimeChangeText = "► +0.00 (0.00%)";
+            realtimeChangeColor = "#8e8e93";
+        }
+
+        var localTime = new Date(meta.regularMarketTime * 1000);
+        var y = localTime.getFullYear();
+        var m = String(localTime.getMonth() + 1).padStart(2, '0');
+        var d = String(localTime.getDate()).padStart(2, '0');
+        realtimeDate = y + '-' + m + '-' + d;
+        return true;
+    }
+    return false;
+}
+
+// 核心整合同步函式 (可被初次載入及按鈕重複呼叫)
+function executeSync() {
     var bar = document.getElementById('progress-bar');
     var logStatus = document.getElementById('log-status');
+    var refreshBtn = document.getElementById('refresh-btn');
+    var refreshBtnText = document.getElementById('refresh-btn-text');
     
+    // 鎖定按鈕狀態並開啟動態動畫預備
+    refreshBtn.disabled = true;
+    refreshBtnText.innerText = "時空解算中...";
+    
+    // 如果儀表板本來已經顯示，微幅展示載入提示
+    document.getElementById('loading-box').style.display = 'block';
+    bar.style.width = '10%';
+    logStatus.innerText = "開始連線核心矩陣...";
+
     var today = new Date();
     var halfYearAgo = new Date();
     halfYearAgo.setDate(today.getDate() - 180);
@@ -290,7 +369,7 @@ function init() {
         return y + '-' + m + '-' + d;
     };
 
-    bar.style.width = '20%';
+    bar.style.width = '30%';
     logStatus.innerText = "第一步：同步歷史證券交易所大數據...";
 
     var historyUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=0056&start_date=${formatDate(halfYearAgo)}&end_date=${formatDate(today)}`;
@@ -299,46 +378,47 @@ function init() {
         if(res.data && res.data.length > 0) {
             rawHistoryKlines = res.data;
             bar.style.width = '60%';
-            logStatus.innerText = "第二步：交織穩定的盤中即時網路節點...";
+            logStatus.innerText = "第二步：交織智慧雙通道即時網路節點...";
             
-            // 【優化改動核心】：拋棄嚴格 Cookie 限制的舊 API，改用免驗證跨域的 AllOrigins 橋接 Yahoo 財經 API
-            var proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent("https://query1.finance.yahoo.com/v8/finance/chart/0056.TW?interval=1m&range=1d");
-            return fetch(proxyUrl);
+            var targetApi = "https://query1.finance.yahoo.com/v8/finance/chart/0056.TW?interval=1m&range=1d";
+            var urlA = "https://api.allorigins.win/get?url=" + encodeURIComponent(targetApi);
+            
+            return fetch(urlA).then(function(r){ return r.json(); }).then(function(wrapper){
+                var data = JSON.parse(wrapper.contents);
+                if(!parseYahooData(data)) throw new Error("A通道解析無效值");
+                console.log("主通道 A (AllOrigins) 連線成功");
+            }).catch(function(err){
+                console.warn("主通道 A 失敗，啟用備援通道 B...", err);
+                var urlB = "https://corsproxy.io/?" + encodeURIComponent(targetApi);
+                return fetch(urlB).then(function(r){ return r.json(); }).then(function(data){
+                    if(!parseYahooData(data)) throw new Error("B通道解析無效值");
+                    console.log("備援通道 B (Corsproxy.io) 連線成功");
+                });
+            });
         } else {
-            throw new Error("FinMind 節點繁忙");
+            throw new Error("FinMind 歷史節點繁忙");
         }
-    }).then(function(res){ return res.json(); }).then(function(wrapper){
-        try {
-            var data = JSON.parse(wrapper.contents);
-            var result = data.chart.result[0];
-            var meta = result.meta;
-            var price = meta.regularMarketPrice; // 取得最新盤中價
-            
-            if (price && price > 0) {
-                realtimePrice = price;
-                // 轉換時間戳為當前本地日期格式 (YYYY-MM-DD)
-                var localTime = new Date(meta.regularMarketTime * 1000);
-                realtimeDate = formatDate(localTime);
-                console.log("成功校準盤中資料，最新價：" + realtimePrice + " 日期：" + realtimeDate);
-            }
-        } catch(e) {
-            console.log("盤中即時資料解析微瑕疵，啟動保底機制：直接以最新歷史收盤為基準。");
-        }
-        
+    }).then(function(){
         bar.style.width = '100%';
         logStatus.innerText = "解算完畢，防禦閘門開啟。";
         processData();
     }).catch(function(e){
-        console.error(e);
+        console.error("即時雙代理皆失效，觸發最末線保底機制：直接以最新歷史收盤為基準。", e);
         if(rawHistoryKlines.length > 0) {
             bar.style.width = '100%';
             processData();
         } else {
             alert("交易所數據通道中斷，請確認您的網路連線狀態。");
         }
+    }).finally(function(){
+        // 解鎖按鈕，恢復常態
+        refreshBtn.disabled = false;
+        refreshBtnText.innerText = "更新股價與防禦燈號";
     });
 }
-init();
+
+// 頁面初始化
+executeSync();
 </script>
 </body>
 </html>
