@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="0056防禦">
+    
+    <link rel="apple-touch-icon" href="icon.png">
+    
+    <title>0056 雙時空存股防禦儀表板</title>
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --card-bg: #151a22;
+            --text-color: #f2f2f7;
+            --border-color: #222b35;
+            --green: #34c759;
+            --red: #ff3b30;
+            --yellow: #ffcc00;
+            --blue: #0a84ff;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: calc(20px + env(safe-area-inset-top)) 16px 20px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container { width: 100%; max-width: 450px; }
+        h1 { font-size: 24px; text-align: center; color: #ffffff; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.5px; }
+        .subtitle { text-align: center; color: #8e8e93; font-size: 12px; margin-bottom: 20px; }
+        
+        .header-action { display: flex; justify-content: center; margin-bottom: 20px; width: 100%; }
+        .refresh-btn {
+            background: linear-gradient(135deg, #0a84ff 0%, #0056b3 100%);
+            border: none;
+            color: #ffffff;
+            padding: 14px 28px;
+            border-radius: 28px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            box-shadow: 0 4px 14px rgba(10, 132, 255, 0.4);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 0.5px;
+        }
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(10, 132, 255, 0.6);
+            background: linear-gradient(135deg, #2291ff 0%, #0a84ff 100%);
+        }
+        .refresh-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 8px rgba(10, 132, 255, 0.4);
+        }
+        .refresh-btn:disabled {
+            background: #2c2c2e !important;
+            color: #8e8e93 !important;
+            box-shadow: none !important;
+            transform: none !important;
+            cursor: not-allowed;
+        }
+
+        .master-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+        .master-signal-box { background: var(--card-bg); border-radius: 12px; padding: 14px 8px; text-align: center; border: 2px solid var(--border-color); transition: all 0.3s ease; }
+        .master-title { font-size: 12px; color: #8e8e93; font-weight: 600; margin-bottom: 6px; }
+        .master-status-text { font-size: 16px; font-weight: 900; }
+
+        .price-box { padding: 14px; background: var(--card-bg); border-radius: 14px; border: 1px solid var(--border-color); margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: center; }
+        .price-item { display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .price-title { font-size: 11px; color: #8e8e93; }
+        .price-value { font-size: 24px; font-weight: 800; margin-top: 4px; color: #ffffff; }
+        .price-change { font-size: 11px; font-weight: 700; margin-top: 2px; }
+        .ma-value { color: var(--blue) !important; }
+
+        .card { background: var(--card-bg); border-radius: 14px; padding: 14px; margin-bottom: 12px; border: 1px solid var(--border-color); }
+        .card-header-title { font-size: 14px; font-weight: 700; color: var(--yellow); margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+        
+        .radar-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .radar-row:last-child { margin-bottom: 0; }
+        .radar-meta h4 { margin: 0; font-size: 13px; color: #ffffff; font-weight: 600; }
+        .radar-value { display: flex; align-items: center; gap: 8px; }
+        .mini-light { width: 12px; height: 12px; border-radius: 50%; background-color: #48484a; }
+        .mini-text { font-size: 12px; font-weight: 700; font-family: monospace; }
+
+        .result-box { text-align: center; padding: 20px; border-radius: 14px; margin-bottom: 16px; transition: all 0.3s ease; }
+        .result-box h3 { margin: 0; font-size: 13px; color: #8e8e93; font-weight: 700; }
+        .order-amount { font-size: 28px; font-weight: 900; margin: 8px 0; letter-spacing: 0.5px; }
+        .strategy-desc { font-size: 13px; color: #f2f2f7; line-height: 1.5; text-align: justify; }
+
+        .loading-box { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 24px; text-align: center; margin-top: 40px; }
+        .progress-container { width: 100%; background-color: #2c2c2e; border-radius: 10px; margin: 16px 0; overflow: hidden; }
+        .progress-bar { width: 0%; height: 6px; background-color: var(--blue); transition: width 0.3s ease; }
+        #log-status { font-size: 12px; color: #8e8e93; margin-top: 8px; }
+
+        .guide-panel { background: var(--card-bg); border-radius: 14px; padding: 16px; margin-top: 20px; border: 1px dashed var(--border-color); font-size: 12px; }
+        .guide-title { font-size: 13px; font-weight: 800; margin-bottom: 10px; }
+        .guide-row { display: flex; margin-bottom: 10px; line-height: 1.4; }
+        .guide-tag { width: 85px; font-weight: 800; padding: 2px 4px; border-radius: 4px; text-align: center; margin-right: 10px; flex-shrink: 0; }
+        .guide-tag.green { background: rgba(52,199,59,0.15); color: var(--green); }
+        .guide-tag.yellow { background: rgba(255,204,0,0.15); color: var(--yellow); }
+        .guide-tag.red { background: rgba(255,59,48,0.15); color: var(--red); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>0056 雙時空存股防禦系統</h1>
+    <div class="subtitle">每日動態監控 · 智慧雙通道抗卡死版</div>
+
+    <div class="header-action">
+        <button id="refresh-btn" class="refresh-btn" onclick="executeSync()">
+            <span>🔄</span> <span id="refresh-btn-text">重新對時 · 解算時空矩陣</span>
+        </button>
+    </div>
+
+    <div id="loading-box" class="loading-box">
+        <div style="font-size: 16px; font-weight: bold; color: #ffffff;">📊 正在進行時空交織與數據校準...</div>
+        <div class="progress-container"><div id="progress-bar" class="progress-bar"></div></div>
+        <div id="log-status">正在啟動防禦矩陣...</div>
+    </div>
+    
+    <div id="dashboard" style="display: none;">
+        <div class="price-box">
+            <div class="price-item">
+                <div class="price-title" id="price-label">即時成交價</div>
+                <div id="stock-price" class="price-value">$0.00</div>
+                <div id="stock-change" class="price-change">--</div>
+            </div>
+            <div class="price-item" style="border-left: 1px solid var(--border-color);">
+                <div class="price-title">動態 20日均線</div>
+                <div id="ma-price" class="price-value ma-value">$0.00</div>
+                <div style="font-size: 11px; color: #8e8e93; margin-top:2px;">防禦基準線</div>
+            </div>
+        </div>
+
+        <div id="decision-box" class="card result-box">
+            <h3 id="decision-title">今日行動指南</h3>
+            <div id="order-value" class="order-amount">評估中</div>
+            <div id="strategy-text" class="strategy-desc">正在等待防禦閘門進行動態解算...</div>
+        </div>
+
+        <div class="master-grid">
+            <div id="box-1d" class="master-signal-box">
+                <div class="master-title">日線級別 (1d)</div>
+                <div id="status-1d" class="master-status-text">解算中</div>
+            </div>
+            <div id="box-1w" class="master-signal-box">
+                <div class="master-title">週線級別 (1w)</div>
+                <div id="status-1w" class="master-status-text">解算中</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header-title">🛡️ 統計與動態幾何指標</div>
+            <div class="radar-row">
+                <div class="radar-meta"><h4>日線相對強弱 RSI (過熱閥值: 65)</h4></div>
+                <div class="radar-value"><div id="rsi-1d-light" class="mini-light"></div>&nbsp;<div id="rsi-1d-text" class="mini-text">-</div></div>
+            </div>
+            <div class="radar-row">
+                <div class="radar-meta"><h4>週線宏觀動能 RSI (過熱閥值: 70)</h4></div>
+                <div class="radar-value"><div id="rsi-1w-light" class="mini-light"></div>&nbsp;<div id="rsi-1w-text" class="mini-text">-</div></div>
+            </div>
+            <div class="radar-row">
+                <div class="radar-meta"><h4>盤中即時夏農資訊熵 (洗盤閥值: 3.50)</h4></div>
+                <div class="radar-value"><div id="entropy-light" class="mini-light"></div>&nbsp;<div id="entropy-text" class="mini-text">-</div></div>
+            </div>
+        </div>
+
+        <div class="guide-panel">
+            <div class="guide-title">🧭 每日防禦燈號實戰操作紀律</div>
+            <div class="guide-row">
+                <div class="guide-tag green">🟢 准許獵殺</div>
+                <div class="guide-text">雙時空結構安全。此時若收盤價跌破 20日均線，代表抓到本月極佳相對低點，可果斷執行買入一張。</div>
+            </div>
+            <div class="guide-row">
+                <div class="guide-tag yellow">🟡 噪訊觀望</div>
+                <div class="guide-text">市場隨機亂度過大，正處於震盪洗盤。今天管住雙手不手動加碼，靜待亂度冷卻。</div>
+            </div>
+            <div class="guide-row">
+                <div class="guide-tag red">🔴 極端過熱</div>
+                <div class="guide-text">股價嚴重高估，配息殖利率降至谷底。強制鎖死新台幣現金，今天絕對不買。</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var rawHistoryKlines = [];
+var realtimePrice = null;
+var realtimeDate = null;
+var realtimeChangeText = "";
+var realtimeChangeColor = "#8e8e93";
+var todayMinutePrices = []; // 用來存儲當天每分鐘的即時價格流
+
+function calculateRSI(prices, periods) {
+    if (prices.length <= periods) return 50;
+    var gains = 0, losses = 0;
+    for (var i = prices.length - periods; i < prices.length; i++) {
+        var diff = prices[i] - prices[i - 1];
+        if (diff > 0) gains += diff; else losses -= diff;
+    }
+    if (losses === 0) return 100;
+    return 100 - (100 / (1 + (gains / losses)));
+}
+
+// 升級版：計算盤中高頻率分鐘收益率的夏農熵
+function calculateShannonEntropy1m(minutePrices) {
+    // 盤前或剛開盤分鐘資料不足時，給予安全的保底值
+    if (!minutePrices || minutePrices.length < 10) return 2.0;
+    
+    var returns = [];
+    for(var i = 1; i < minutePrices.length; i++) {
+        if(minutePrices[i-1] > 0) {
+            returns.push(Math.log(minutePrices[i] / minutePrices[i-1]));
+        }
+    }
+    
+    // 分鐘級別波動較小，切片切得更細 (0.05% 為一個區間抽屜)
+    var bins = {}; var binSize = 0.0005; 
+    returns.forEach(function(r) { 
+        var binIndex = Math.floor(r / binSize); 
+        bins[binIndex] = (bins[binIndex] || 0) + 1; 
+    });
+    
+    var entropy = 0; var total = returns.length;
+    for (var key in bins) { 
+        var p = bins[key] / total; 
+        if (p > 0) entropy -= p * Math.log2(p); 
+    }
+    return entropy;
+}
+
+function calculateMA(prices, period) {
+    if (prices.length < period) return prices[prices.length - 1];
+    var sum = 0;
+    for (var i = prices.length - period; i < prices.length; i++) {
+        sum += prices[i];
+    }
+    return sum / period;
+}
+
+function processData() {
+    var prices = rawHistoryKlines.map(function(d) { return d.close; });
+    var lastHistoryDate = rawHistoryKlines[rawHistoryKlines.length - 1].date;
+
+    if (realtimePrice && realtimeDate && realtimeDate !== lastHistoryDate) {
+        prices.push(realtimePrice);
+        document.getElementById('price-label').innerText = "盤中即時價";
+    } else {
+        document.getElementById('price-label').innerText = "今日收盤價";
+    }
+
+    var currentPrice = prices[prices.length - 1];
+    var ma20 = calculateMA(prices, 20);
+    
+    document.getElementById('stock-price').innerText = '$' + currentPrice.toFixed(2);
+    
+    var changeDiv = document.getElementById('stock-change');
+    changeDiv.innerText = realtimeChangeText || "--";
+    changeDiv.style.color = realtimeChangeColor;
+
+    document.getElementById('ma-price').innerText = '$' + ma20.toFixed(2);
+
+    var rsi1d = calculateRSI(prices, 14);
+    
+    // 【核心優化】：夏農熵直接讀取當天 1 分鐘高頻資料流，盤中多空拉鋸、爆量護盤一分鐘內立馬現形！
+    // 盤中高頻率洗盤閥值調整為 3.50
+    var entropy = calculateShannonEntropy1m(todayMinutePrices);
+
+    var weekPrices = [];
+    for(var i = prices.length - 1; i >= 0; i -= 5) {
+        weekPrices.unshift(prices[i]);
+    }
+    var rsi1w = calculateRSI(weekPrices, 14);
+
+    var status1d = "GREEN";
+    if (rsi1d >= 65) status1d = "RED";
+    else if (entropy > 3.50) status1d = "YELLOW"; // 盤中高頻閾值設定
+
+    var status1w = "GREEN";
+    if (rsi1w >= 70) status1w = "RED";
+
+    updateBox('box-1d', 'status-1d', status1d);
+    updateBox('box-1w', 'status-1w', status1w);
+
+    updateRow('rsi-1d-light', 'rsi-1d-text', rsi1d.toFixed(1), rsi1d >= 65 ? '--red' : '--green');
+    updateRow('rsi-1w-light', 'rsi-1w-text', rsi1w.toFixed(1), rsi1w >= 70 ? '--red' : '--green');
+    updateRow('entropy-light', 'entropy-text', entropy.toFixed(2), entropy > 3.50 ? '--yellow' : '--green');
+
+    var dBox = document.getElementById('decision-box');
+    var dTitle = document.getElementById('decision-title');
+    var dValue = document.getElementById('order-value');
+    var dDesc = document.getElementById('strategy-text');
+
+    if (status1d === "RED" || status1w === "RED") {
+        dBox.style.background = "rgba(255,59,48,0.12)"; dValue.style.color = "var(--red)";
+        dTitle.innerText = "🚨 今日行動指南 · 極端過熱";
+        dValue.innerText = "FORBIDDEN / 嚴禁追高";
+        dDesc.innerText = "【殖利率嚴重高估】目前 0056 在時空象限已衝破超買天花板。此時溢價極高，買入將嚴重稀釋配息殖利率。新台幣現金子彈請死死鎖在銀行帳戶中。請繼續保持天天看燈的紀律，耐心等待這盞紅燈熄滅轉綠的物理時刻。";
+    } else if (status1d === "YELLOW") {
+        dBox.style.background = "rgba(255,204,0,0.12)"; dValue.style.color = "var(--yellow)";
+        dTitle.innerText = "🟡 今日行動指南 · 噪訊觀望";
+        dValue.innerText = "WAITING / 暫停動作";
+        dDesc.innerText = "【盤中高頻隨機亂度攔截】偵測到當下盤中每分鐘價格出現非理性多空瘋狂拉鋸或洗盤，隨機無序度過大。大家雖然在全力撐盤，但此時局勢混亂。今天請先管住雙手，不要在多空激烈肉搏的子彈滿天飛時進場，靜待亂度冷卻。";
+    } else {
+        if (currentPrice <= ma20) {
+            dBox.style.background = "rgba(52,199,89,0.15)"; dValue.style.color = "var(--green)";
+            dTitle.innerText = "🔥 今日行動指南 · 訊號觸發！";
+            dValue.innerText = "BUY TICK / 執行買入";
+            dDesc.innerText = `【當月極佳低吸點】目前雙時空環境安全乾淨，且今日最新即時價 ($${currentPrice.toFixed(2)}) 已成功跌破動態 20日基準線 ($${ma20.toFixed(2)})！這在統計學上屬於本月難得的相對低點。若本月尚未手動敲進這一張，今天下午收盤前正是極佳的單筆進場狙擊時刻！`;
+        } else {
+            dBox.style.background = "rgba(52,199,89,0.06)"; dValue.style.color = "#8e8e93";
+            dTitle.innerText = "🟢 今日行動指南 · 准許獵殺 (觀望中)";
+            dValue.innerText = "STANDBY / 價格尚不夠低";
+            dDesc.innerText = `【大環境安全，等待回檔】目前 0056 雙時空結構乾淨安全，本月准許進場。然而，今日即時成交價 ($${currentPrice.toFixed(2)}) 仍處於 20日基準線 ($${ma20.toFixed(2)}) 之上，意味著價格還不夠划算。今天先不買，請明天繼續監控，等待價格跌破基準線的扳機時刻。`;
+        }
+    }
+
+    document.getElementById('loading-box').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+}
+
+function updateBox(boxId, textId, status) {
+    var box = document.getElementById(boxId);
+    var txt = document.getElementById(textId);
+    if(status === "RED") { box.style.border = "2px solid var(--red)"; txt.innerText = "🔴 昂貴過熱"; txt.style.color = "var(--red)"; }
+    else if(status === "YELLOW") { box.style.border = "2px solid var(--yellow)"; txt.innerText = "🟡 噪訊觀望"; txt.style.color = "var(--yellow)"; }
+    else { box.style.border = "2px solid var(--green)"; txt.innerText = "🟢 安全常態"; txt.style.color = "var(--green)"; }
+}
+
+function updateRow(lightId, textId, value, colorVar) {
+    document.getElementById(lightId).style.backgroundColor = 'var(' + colorVar + ')';
+    document.getElementById(textId).innerText = value;
+    document.getElementById(textId).style.color = 'var(' + colorVar + ')';
+}
+
+function parseYahooData(jsonObj) {
+    var result = jsonObj.chart.result[0];
+    var meta = result.meta;
+    var price = meta.regularMarketPrice;
+    
+    if (price && price > 0) {
+        realtimePrice = price;
+        var prevClose = meta.previousClose;
+        var change = price - prevClose;
+        var changePercent = (change / prevClose) * 100;
+        
+        if (change > 0) {
+            realtimeChangeText = "▲ +" + change.toFixed(2) + " (+" + changePercent.toFixed(2) + "%)";
+            realtimeChangeColor = "var(--red)";
+        } else if (change < 0) {
+            realtimeChangeText = "▼ " + change.toFixed(2) + " (" + changePercent.toFixed(2) + "%)";
+            realtimeChangeColor = "var(--green)";
+        } else {
+            realtimeChangeText = "► +0.00 (0.00%)";
+            realtimeChangeColor = "#8e8e93";
+        }
+
+        var localTime = new Date(meta.regularMarketTime * 1000);
+        var y = localTime.getFullYear();
+        var m = String(localTime.getMonth() + 1).padStart(2, '0');
+        var d = String(localTime.getDate()).padStart(2, '0');
+        realtimeDate = y + '-' + m + '-' + d;
+        
+        // 【核心提取】：將當天開盤至今，每一分鐘的收盤價數據，全部提取出來供夏農熵計算
+        if (result.indicators && result.indicators.quote && result.indicators.quote[0]) {
+            var minuteCloses = result.indicators.quote[0].close || [];
+            // 過濾掉 null 的無效點，只保留有成交的分鐘價格
+            todayMinutePrices = minuteCloses.filter(function(v) { return v !== null && v > 0; });
+        }
+        
+        return true;
+    }
+    return false;
+}
+
+function fetchWithTimeout(url, options, timeoutMs) {
+    return new Promise(function(resolve, reject) {
+        var controller = new AbortController();
+        var signal = controller.signal;
+        var timeoutId = setTimeout(function() {
+            controller.abort();
+            reject(new Error("連線逾時中斷"));
+        }, timeoutMs);
+
+        fetch(url, Object.assign({}, options, { signal: signal }))
+            .then(resolve)
+            .catch(reject)
+            .finally(function() { clearTimeout(timeoutId); });
+    });
+}
+
+function executeSync() {
+    var bar = document.getElementById('progress-bar');
+    var logStatus = document.getElementById('log-status');
+    var refreshBtn = document.getElementById('refresh-btn');
+    var refreshBtnText = document.getElementById('refresh-btn-text');
+    
+    refreshBtn.disabled = true;
+    refreshBtnText.innerText = "時空矩陣解算中...";
+    
+    document.getElementById('loading-box').style.display = 'block';
+    bar.style.width = '10%';
+    logStatus.innerText = "正在連線核心時空節點...";
+
+    var today = new Date();
+    var halfYearAgo = new Date();
+    halfYearAgo.setDate(today.getDate() - 180);
+    
+    var formatDate = function(date) {
+        var y = date.getFullYear();
+        var m = String(date.getMonth() + 1).padStart(2, '0');
+        var d = String(date.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + d;
+    };
+
+    bar.style.width = '30%';
+    logStatus.innerText = "第一步：同步歷史證券交易所大數據...";
+
+    var historyUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=0056&start_date=${formatDate(halfYearAgo)}&end_date=${formatDate(today)}&_=${Math.random()}`;
+    
+    fetch(historyUrl).then(function(res){ return res.json(); }).then(function(res){
+        if(res.data && res.data.length > 0) {
+            rawHistoryKlines = res.data;
+            bar.style.width = '60%';
+            logStatus.innerText = "第二步：交織智慧雙通道即時網路節點...";
+            
+            var targetApi = "https://query1.finance.yahoo.com/v8/finance/chart/0056.TW?interval=1m&range=1d&_cache=" + Math.random();
+            var urlA = "https://api.allorigins.win/get?url=" + encodeURIComponent(targetApi);
+            
+            return fetchWithTimeout(urlA, {}, 1500).then(function(r){ return r.json(); }).then(function(wrapper){
+                var data = JSON.parse(wrapper.contents);
+                if(!parseYahooData(data)) throw new Error("A通道無效值");
+                console.log("快捷通道 A (AllOrigins) 連線成功");
+            }).catch(function(err){
+                console.warn("通道 A 延遲，切換備援通道 B...", err);
+                var urlB = "https://corsproxy.io/?" + encodeURIComponent(targetApi);
+                return fetchWithTimeout(urlB, {}, 2000).then(function(r){ return r.json(); }).then(function(data){
+                    if(!parseYahooData(data)) throw new Error("B通道連線成功");
+                });
+            });
+        } else {
+            throw new Error("FinMind 歷史節點繁忙");
+        }
+    }).then(function(){
+        bar.style.width = '100%';
+        logStatus.innerText = "解算完畢，防禦閘門開啟。";
+        processData();
+    }).catch(function(e){
+        console.error("即時雙代理皆超時，啟動末線保底機制。", e);
+        if(rawHistoryKlines.length > 0) {
+            bar.style.width = '100%';
+            processData();
+        } else {
+            alert("交易所數據通道中斷，請檢查網路連線。");
+        }
+    }).finally(function(){
+        refreshBtn.disabled = false;
+        refreshBtnText.innerText = "重新對時 · 解算時空矩陣";
+    });
+}
+
+executeSync();
+</script>
+</body>
+</html>
