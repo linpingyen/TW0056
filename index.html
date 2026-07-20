@@ -225,7 +225,6 @@ function calculateRSI(prices, periods) {
 }
 
 function calculateShannonEntropy1m(minutePrices) {
-    // 樣本不足 10 筆代表休市、收盤時間或盤前，回傳特殊的 -1 標記
     if (!minutePrices || minutePrices.length < 10) return -1;
     
     var returns = [];
@@ -285,7 +284,6 @@ function processData() {
     var rsi1d = calculateRSI(prices, 14);
     var entropy = calculateShannonEntropy1m(todayMinutePrices);
 
-    // 渲染即時面板日誌診斷
     document.getElementById('diag-samples').innerText = todayMinutePrices.length;
     var now = new Date();
     document.getElementById('diag-time').innerText = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0') + ":" + now.getSeconds().toString().padStart(2,'0') + " 校準完畢";
@@ -296,12 +294,16 @@ function processData() {
     }
     var rsi1w = calculateRSI(weekPrices, 14);
 
-    // 判斷夏農熵是否無資料
     var isNoData = (entropy === -1);
 
     var status1d = "GREEN";
-    if (rsi1d >= 65) status1d = "RED";
-    else if (isNoData || entropy > 3.50) status1d = "YELLOW"; // 無資料時強制顯示黃色
+    if (isNoData) {
+        status1d = "YELLOW";
+    } else if (rsi1d >= 65) {
+        status1d = "RED";
+    } else if (entropy > 3.50) {
+        status1d = "YELLOW"; 
+    }
 
     var status1w = "GREEN";
     if (rsi1w >= 70) status1w = "RED";
@@ -312,7 +314,6 @@ function processData() {
     updateRow('rsi-1d-light', 'rsi-1d-text', rsi1d.toFixed(1), rsi1d >= 65 ? '--red' : '--green');
     updateRow('rsi-1w-light', 'rsi-1w-text', rsi1w.toFixed(1), rsi1w >= 70 ? '--red' : '--green');
     
-    // 下方動態幾何指標燈號渲染
     if (isNoData) {
         updateRow('entropy-light', 'entropy-text', "暫無數據", '--yellow');
     } else {
@@ -324,17 +325,19 @@ function processData() {
     var dValue = document.getElementById('order-value');
     var dDesc = document.getElementById('strategy-text');
 
-    if (status1d === "RED" || status1w === "RED") {
+    // 🌟 【重磅邏輯變更點】：把 isNoData 的防禦攔截獨立拉到最前面作為「絕對霸權」！
+    // 這樣可以杜絕當日線或週線過熱符合超買時，isNoData 的判斷被 else 阻斷並蓋回紅色的漏洞。
+    if (isNoData) {
+        dBox.style.background = "rgba(255,204,0,0.12)"; 
+        dValue.style.color = "var(--yellow)";
+        dTitle.innerText = "🟡 今日行動指南 · 數據待校準";
+        dValue.innerText = "WAITING / 暫無盤中數據";
+        dDesc.innerText = "【收盤時間暫無盤中數據】目前處於非交易時段（或開盤初期採樣不足），高頻分鐘數據尚未生成。系統為了維護您的資產安全，已自動啟動黃燈防禦。請於台股開盤時間（週一至週五 09:00~13:30）重新對時，以獲取最準確的即時波段亂度與獵殺指令。";
+    } else if (status1d === "RED" || status1w === "RED") {
         dBox.style.background = "rgba(255,59,48,0.12)"; dValue.style.color = "var(--red)";
         dTitle.innerText = "🚨 今日行動指南 · 極端過熱";
         dValue.innerText = "FORBIDDEN / 嚴禁追高";
         dDesc.innerText = "【殖利率嚴重高估】目前 0056 在時空象限已衝破超買天花板。此時溢價極高，買入將嚴重稀釋配息殖利率。新台幣現金子彈請死死鎖在銀行帳戶中。請繼續保持天天看燈的紀律，耐心等待這盞紅燈熄滅轉綠的物理時刻。";
-    } else if (isNoData) {
-        // 【新增安全閘門】：收盤時間暫無盤中數據時，強制顯示黃色指南
-        dBox.style.background = "rgba(255,204,0,0.12)"; dValue.style.color = "var(--yellow)";
-        dTitle.innerText = "🟡 今日行動指南 · 數據待校準";
-        dValue.innerText = "WAITING / 暫無盤中數據";
-        dDesc.innerText = "【收盤時間暫無盤中數據】目前處於非交易時段（或開盤初期採樣不足），高頻分鐘數據尚未生成。系統為了維護您的資產安全，已自動啟動黃燈防禦。請於台股開盤時間（週一至週五 09:00~13:30）重新對時，以獲取最準確的即時波段亂度與獵殺指令。";
     } else if (status1d === "YELLOW") {
         dBox.style.background = "rgba(255,204,0,0.12)"; dValue.style.color = "var(--yellow)";
         dTitle.innerText = "🟡 今日行動指南 · 噪訊觀望";
@@ -349,7 +352,7 @@ function processData() {
         } else {
             dBox.style.background = "rgba(52,199,89,0.06)"; dValue.style.color = "#8e8e93";
             dTitle.innerText = "🟢 今日行動指南 · 准許獵殺 (觀望中)";
-            dValue.innerText = "STANDBY / 價格尚不夠划算";
+            dValue.innerText = "STANDBY / 價格尚不夠劃算";
             dDesc.innerText = `【大環境安全，等待回檔】目前 0056 雙時空結構乾淨安全，本月准許進場。然而，今日即時成交價 ($${currentPrice.toFixed(2)}) 仍處於 20日基準線 ($${ma20.toFixed(2)}) 之上，意味著價格還不夠划算。今天先不買，請明天繼續監控，等待價格跌破基準線的扳機時刻。`;
         }
     }
