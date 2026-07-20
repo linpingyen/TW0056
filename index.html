@@ -34,11 +34,8 @@
         }
         .container { width: 100%; max-width: 450px; }
         h1 { font-size: 24px; text-align: center; color: #ffffff; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.5px; }
-        .subtitle { text-align: center; color: #8e8e93; font-size: 12px; margin-bottom: 6px; }
+        .subtitle { text-align: center; color: #8e8e93; font-size: 12px; margin-bottom: 20px; }
         
-        /* 頂部辨識標籤 */
-        .version-tag { text-align: center; font-size: 11px; color: var(--yellow); background: rgba(255,204,0,0.1); padding: 4px 12px; border-radius: 12px; margin-bottom: 20px; font-weight: bold; border: 1px solid rgba(255,204,0,0.2); }
-
         .header-action { display: flex; justify-content: center; margin-bottom: 20px; width: 100%; }
         .refresh-btn {
             background: linear-gradient(135deg, #0a84ff 0%, #0056b3 100%);
@@ -63,15 +60,22 @@
             box-shadow: 0 6px 20px rgba(10, 132, 255, 0.6);
             background: linear-gradient(135deg, #2291ff 0%, #0a84ff 100%);
         }
+        .refresh-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 8px rgba(10, 132, 255, 0.4);
+        }
         .refresh-btn:disabled {
             background: #2c2c2e !important;
             color: #8e8e93 !important;
             box-shadow: none !important;
             transform: none !important;
+            cursor: not-allowed;
         }
 
-        /* 即時核心診斷面板 */
-        .diagnostic-panel { background: #000000; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-family: monospace; font-size: 11px; color: #34c759; border: 1px solid #1c232e; width: 100%; text-align: left; }
+        .master-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+        .master-signal-box { background: var(--card-bg); border-radius: 12px; padding: 14px 8px; text-align: center; border: 2px solid var(--border-color); transition: all 0.3s ease; }
+        .master-title { font-size: 12px; color: #8e8e93; font-weight: 600; margin-bottom: 6px; }
+        .master-status-text { font-size: 16px; font-weight: 900; }
 
         .price-box { padding: 14px; background: var(--card-bg); border-radius: 14px; border: 1px solid var(--border-color); margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; text-align: center; }
         .price-item { display: flex; flex-direction: column; justify-content: center; align-items: center; }
@@ -83,10 +87,12 @@
         .card { background: var(--card-bg); border-radius: 14px; padding: 14px; margin-bottom: 12px; border: 1px solid var(--border-color); }
         .card-header-title { font-size: 14px; font-weight: 700; color: var(--yellow); margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
         
-        .master-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
-        .master-signal-box { background: var(--card-bg); border-radius: 12px; padding: 14px 8px; text-align: center; border: 2px solid var(--border-color); transition: all 0.3s ease; }
-        .master-title { font-size: 12px; color: #8e8e93; font-weight: 600; margin-bottom: 6px; }
-        .master-status-text { font-size: 16px; font-weight: 900; }
+        .radar-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .radar-row:last-child { margin-bottom: 0; }
+        .radar-meta h4 { margin: 0; font-size: 13px; color: #ffffff; font-weight: 600; }
+        .radar-value { display: flex; align-items: center; gap: 8px; }
+        .mini-light { width: 12px; height: 12px; border-radius: 50%; background-color: #48484a; }
+        .mini-text { font-size: 12px; font-weight: 700; font-family: monospace; }
 
         .result-box { text-align: center; padding: 20px; border-radius: 14px; margin-bottom: 16px; transition: all 0.3s ease; }
         .result-box h3 { margin: 0; font-size: 13px; color: #8e8e93; font-weight: 700; }
@@ -97,13 +103,6 @@
         .progress-container { width: 100%; background-color: #2c2c2e; border-radius: 10px; margin: 16px 0; overflow: hidden; }
         .progress-bar { width: 0%; height: 6px; background-color: var(--blue); transition: width 0.3s ease; }
         #log-status { font-size: 12px; color: #8e8e93; margin-top: 8px; }
-
-        .radar-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-        .radar-row:last-child { margin-bottom: 0; }
-        .radar-meta h4 { margin: 0; font-size: 13px; color: #ffffff; font-weight: 600; }
-        .radar-value { display: flex; align-items: center; gap: 8px; }
-        .mini-light { width: 12px; height: 12px; border-radius: 50%; background-color: #48484a; }
-        .mini-text { font-size: 12px; font-weight: 700; font-family: monospace; }
 
         .guide-panel { background: var(--card-bg); border-radius: 14px; padding: 16px; margin-top: 20px; border: 1px dashed var(--border-color); font-size: 12px; }
         .guide-title { font-size: 13px; font-weight: 800; margin-bottom: 10px; }
@@ -117,9 +116,8 @@
 <body>
 
 <div class="container">
-    <h1>0056 雙時空存股防禦系統 (量子高頻版 v3.5)</h1>
-    <div class="subtitle">每日動態監控 · 智慧雙通道抗卡死安全矩陣</div>
-    <div class="version-tag">⚠️ 檢驗標籤：已成功啟用 1m 高頻率即時夏農熵運作模式</div>
+    <h1>0056 雙時空存股防禦系統</h1>
+    <div class="subtitle">每日動態監控 · 智慧雙通道抗卡死版</div>
 
     <div class="header-action">
         <button id="refresh-btn" class="refresh-btn" onclick="executeSync()">
@@ -134,13 +132,6 @@
     </div>
     
     <div id="dashboard" style="display: none;">
-        <!-- 即時核心診斷面版 -->
-        <div class="diagnostic-panel">
-            ⚡ 系統即時心跳診斷日誌：<br>
-            • 核心對時狀態：<span id="diag-time">OK</span><br>
-            • 盤中 1m 高頻採樣樣本數：<span id="diag-samples" style="color:var(--blue); font-weight:bold;">0</span> 筆
-        </div>
-
         <div class="price-box">
             <div class="price-item">
                 <div class="price-title" id="price-label">即時成交價</div>
@@ -181,9 +172,8 @@
                 <div class="radar-meta"><h4>週線宏觀動能 RSI (過熱閥值: 70)</h4></div>
                 <div class="radar-value"><div id="rsi-1w-light" class="mini-light"></div>&nbsp;<div id="rsi-1w-text" class="mini-text">-</div></div>
             </div>
-            <!-- 🛠️ 這裡修正了！文字已完美同步變更為 3.50 閾值 -->
             <div class="radar-row">
-                <div class="radar-meta"><h4>盤中即時夏農資訊熵 (洗盤閥值: 3.50)</h4></div>
+                <div class="radar-meta"><h4>微觀夏農資訊熵 (洗盤閥值: 2.40)</h4></div>
                 <div class="radar-value"><div id="entropy-light" class="mini-light"></div>&nbsp;<div id="entropy-text" class="mini-text">-</div></div>
             </div>
         </div>
@@ -212,7 +202,6 @@ var realtimePrice = null;
 var realtimeDate = null;
 var realtimeChangeText = "";
 var realtimeChangeColor = "#8e8e93";
-var todayMinutePrices = []; 
 
 function calculateRSI(prices, periods) {
     if (prices.length <= periods) return 50;
@@ -225,27 +214,15 @@ function calculateRSI(prices, periods) {
     return 100 - (100 / (1 + (gains / losses)));
 }
 
-function calculateShannonEntropy1m(minutePrices) {
-    if (!minutePrices || minutePrices.length < 10) return 2.0;
-    
+function calculateShannonEntropy(prices) {
     var returns = [];
-    for(var i = 1; i < minutePrices.length; i++) {
-        if(minutePrices[i-1] > 0) {
-            returns.push(Math.log(minutePrices[i] / minutePrices[i-1]));
-        }
+    for(var i = 1; i < prices.length; i++) {
+        returns.push(Math.log(prices[i] / prices[i-1]));
     }
-    
-    var bins = {}; var binSize = 0.0005; 
-    returns.forEach(function(r) { 
-        var binIndex = Math.floor(r / binSize); 
-        bins[binIndex] = (bins[binIndex] || 0) + 1; 
-    });
-    
+    var bins = {}; var binSize = 0.005;
+    returns.forEach(function(r) { var binIndex = Math.floor(r / binSize); bins[binIndex] = (bins[binIndex] || 0) + 1; });
     var entropy = 0; var total = returns.length;
-    for (var key in bins) { 
-        var p = bins[key] / total; 
-        if (p > 0) entropy -= p * Math.log2(p); 
-    }
+    for (var key in bins) { var p = bins[key] / total; if (p > 0) entropy -= p * Math.log2(p); }
     return entropy;
 }
 
@@ -281,12 +258,7 @@ function processData() {
     document.getElementById('ma-price').innerText = '$' + ma20.toFixed(2);
 
     var rsi1d = calculateRSI(prices, 14);
-    var entropy = calculateShannonEntropy1m(todayMinutePrices);
-
-    // 渲染即時面板日誌診斷
-    document.getElementById('diag-samples').innerText = todayMinutePrices.length;
-    var now = new Date();
-    document.getElementById('diag-time').innerText = now.getHours().toString().padStart(2,'0') + ":" + now.getMinutes().toString().padStart(2,'0') + ":" + now.getSeconds().toString().padStart(2,'0') + " 校準完畢";
+    var entropy = calculateShannonEntropy(prices.slice(-20));
 
     var weekPrices = [];
     for(var i = prices.length - 1; i >= 0; i -= 5) {
@@ -296,7 +268,7 @@ function processData() {
 
     var status1d = "GREEN";
     if (rsi1d >= 65) status1d = "RED";
-    else if (entropy > 3.50) status1d = "YELLOW"; 
+    else if (entropy > 2.40) status1d = "YELLOW";
 
     var status1w = "GREEN";
     if (rsi1w >= 70) status1w = "RED";
@@ -306,7 +278,7 @@ function processData() {
 
     updateRow('rsi-1d-light', 'rsi-1d-text', rsi1d.toFixed(1), rsi1d >= 65 ? '--red' : '--green');
     updateRow('rsi-1w-light', 'rsi-1w-text', rsi1w.toFixed(1), rsi1w >= 70 ? '--red' : '--green');
-    updateRow('entropy-light', 'entropy-text', entropy.toFixed(2), entropy > 3.50 ? '--yellow' : '--green');
+    updateRow('entropy-light', 'entropy-text', entropy.toFixed(2), entropy > 2.40 ? '--yellow' : '--green');
 
     var dBox = document.getElementById('decision-box');
     var dTitle = document.getElementById('decision-title');
@@ -322,7 +294,7 @@ function processData() {
         dBox.style.background = "rgba(255,204,0,0.12)"; dValue.style.color = "var(--yellow)";
         dTitle.innerText = "🟡 今日行動指南 · 噪訊觀望";
         dValue.innerText = "WAITING / 暫停動作";
-        dDesc.innerText = "【盤中高頻隨機亂度攔截】偵測到當下盤中每分鐘價格出現非理性多空瘋狂拉鋸或洗盤，隨機無序度過大。大家雖然在全力撐盤，但此時局勢混亂。今天請先管住雙手，不要在多空激烈肉搏的子彈滿天飛時進場，靜待亂度冷卻。";
+        dDesc.innerText = "【夏農資訊熵攔截】目前日線隨機亂度超標，市場多空拉鋸劇烈，屬於無序洗盤期。今天請管住雙手，不要盲目在大洗盤中手動加碼。請明天同一時間繼續打開面板，靜待噪訊冷卻、綠燈重啟。";
     } else {
         if (currentPrice <= ma20) {
             dBox.style.background = "rgba(52,199,89,0.15)"; dValue.style.color = "var(--green)";
@@ -382,17 +354,12 @@ function parseYahooData(jsonObj) {
         var m = String(localTime.getMonth() + 1).padStart(2, '0');
         var d = String(localTime.getDate()).padStart(2, '0');
         realtimeDate = y + '-' + m + '-' + d;
-        
-        if (result.indicators && result.indicators.quote && result.indicators.quote[0]) {
-            var minuteCloses = result.indicators.quote[0].close || [];
-            todayMinutePrices = minuteCloses.filter(function(v) { return v !== null && v > 0; });
-        }
-        
         return true;
     }
     return false;
 }
 
+// 建立可控超時的 fetch 機制
 function fetchWithTimeout(url, options, timeoutMs) {
     return new Promise(function(resolve, reject) {
         var controller = new AbortController();
@@ -436,6 +403,7 @@ function executeSync() {
     bar.style.width = '30%';
     logStatus.innerText = "第一步：同步歷史證券交易所大數據...";
 
+    // 歷史資料加時間戳防快取
     var historyUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=0056&start_date=${formatDate(halfYearAgo)}&end_date=${formatDate(today)}&_=${Math.random()}`;
     
     fetch(historyUrl).then(function(res){ return res.json(); }).then(function(res){
@@ -444,18 +412,22 @@ function executeSync() {
             bar.style.width = '60%';
             logStatus.innerText = "第二步：交織智慧雙通道即時網路節點...";
             
+            // Yahoo API 加隨機參數破壞 Proxy 快取，取得真即時數據
             var targetApi = "https://query1.finance.yahoo.com/v8/finance/chart/0056.TW?interval=1m&range=1d&_cache=" + Math.random();
             var urlA = "https://api.allorigins.win/get?url=" + encodeURIComponent(targetApi);
             
+            // 核心優化：限制主通道 A 最多等 1500毫秒 (1.5秒)，超時直接滾去 B 通道
             return fetchWithTimeout(urlA, {}, 1500).then(function(r){ return r.json(); }).then(function(wrapper){
                 var data = JSON.parse(wrapper.contents);
                 if(!parseYahooData(data)) throw new Error("A通道無效值");
                 console.log("快捷通道 A (AllOrigins) 連線成功");
             }).catch(function(err){
-                console.warn("通道 A 延遲，切換備援通道 B...", err);
+                console.warn("通道 A 延遲觸發 1.5秒硬中斷，切換備援通道 B...", err);
                 var urlB = "https://corsproxy.io/?" + encodeURIComponent(targetApi);
+                // 備援通道 B 同樣限制 2000毫秒 逾時
                 return fetchWithTimeout(urlB, {}, 2000).then(function(r){ return r.json(); }).then(function(data){
-                    if(!parseYahooData(data)) throw new Error("B通道連線成功");
+                    if(!parseYahooData(data)) throw new Error("B通道解析無效值");
+                    console.log("備援通道 B (Corsproxy.io) 連線成功");
                 });
             });
         } else {
@@ -466,7 +438,7 @@ function executeSync() {
         logStatus.innerText = "解算完畢，防禦閘門開啟。";
         processData();
     }).catch(function(e){
-        console.error("即時雙代理皆超時，啟動末線保底機制。", e);
+        console.error("即時雙代理皆超時，啟動末線保底機制：以交易所最新歷史收盤為準。", e);
         if(rawHistoryKlines.length > 0) {
             bar.style.width = '100%';
             processData();
