@@ -173,7 +173,7 @@
                 <div class="radar-value"><div id="rsi-1w-light" class="mini-light"></div>&nbsp;<div id="rsi-1w-text" class="mini-text">-</div></div>
             </div>
             <div class="radar-row">
-                <div class="radar-meta"><h4>微觀夏農資訊熵 (洗盤閥值: 2.40)</h4></div>
+                <div class="radar-meta"><h4>盤中即時夏農資訊熵 (洗盤閥值: 3.50)</h4></div>
                 <div class="radar-value"><div id="entropy-light" class="mini-light"></div>&nbsp;<div id="entropy-text" class="mini-text">-</div></div>
             </div>
         </div>
@@ -202,6 +202,7 @@ var realtimePrice = null;
 var realtimeDate = null;
 var realtimeChangeText = "";
 var realtimeChangeColor = "#8e8e93";
+var todayMinutePrices = []; // 用來存儲當天每分鐘的即時價格流
 
 function calculateRSI(prices, periods) {
     if (prices.length <= periods) return 50;
@@ -214,15 +215,30 @@ function calculateRSI(prices, periods) {
     return 100 - (100 / (1 + (gains / losses)));
 }
 
-function calculateShannonEntropy(prices) {
+// 升級版：計算盤中高頻率分鐘收益率的夏農熵
+function calculateShannonEntropy1m(minutePrices) {
+    // 盤前或剛開盤分鐘資料不足時，給予安全的保底值
+    if (!minutePrices || minutePrices.length < 10) return 2.0;
+    
     var returns = [];
-    for(var i = 1; i < prices.length; i++) {
-        returns.push(Math.log(prices[i] / prices[i-1]));
+    for(var i = 1; i < minutePrices.length; i++) {
+        if(minutePrices[i-1] > 0) {
+            returns.push(Math.log(minutePrices[i] / minutePrices[i-1]));
+        }
     }
-    var bins = {}; var binSize = 0.005;
-    returns.forEach(function(r) { var binIndex = Math.floor(r / binSize); bins[binIndex] = (bins[binIndex] || 0) + 1; });
+    
+    // 分鐘級別波動較小，切片切得更細 (0.05% 為一個區間抽屜)
+    var bins = {}; var binSize = 0.0005; 
+    returns.forEach(function(r) { 
+        var binIndex = Math.floor(r / binSize); 
+        bins[binIndex] = (bins[binIndex] || 0) + 1; 
+    });
+    
     var entropy = 0; var total = returns.length;
-    for (var key in bins) { var p = bins[key] / total; if (p > 0) entropy -= p * Math.log2(p); }
+    for (var key in bins) { 
+        var p = bins[key] / total; 
+        if (p > 0) entropy -= p * Math.log2(p); 
+    }
     return entropy;
 }
 
@@ -258,7 +274,10 @@ function processData() {
     document.getElementById('ma-price').innerText = '$' + ma20.toFixed(2);
 
     var rsi1d = calculateRSI(prices, 14);
-    var entropy = calculateShannonEntropy(prices.slice(-20));
+    
+    // 【核心優化】：夏農熵直接讀取當天 1 分鐘高頻資料流，盤中多空拉鋸、爆量護盤一分鐘內立馬現形！
+    // 盤中高頻率洗盤閥值調整為 3.50
+    var entropy = calculateShannonEntropy1m(todayMinutePrices);
 
     var weekPrices = [];
     for(var i = prices.length - 1; i >= 0; i -= 5) {
@@ -268,7 +287,7 @@ function processData() {
 
     var status1d = "GREEN";
     if (rsi1d >= 65) status1d = "RED";
-    else if (entropy > 2.40) status1d = "YELLOW";
+    else if (entropy > 3.50) status1d = "YELLOW"; // 盤中高頻閾值設定
 
     var status1w = "GREEN";
     if (rsi1w >= 70) status1w = "RED";
@@ -278,7 +297,7 @@ function processData() {
 
     updateRow('rsi-1d-light', 'rsi-1d-text', rsi1d.toFixed(1), rsi1d >= 65 ? '--red' : '--green');
     updateRow('rsi-1w-light', 'rsi-1w-text', rsi1w.toFixed(1), rsi1w >= 70 ? '--red' : '--green');
-    updateRow('entropy-light', 'entropy-text', entropy.toFixed(2), entropy > 2.40 ? '--yellow' : '--green');
+    updateRow('entropy-light', 'entropy-text', entropy.toFixed(2), entropy > 3.50 ? '--yellow' : '--green');
 
     var dBox = document.getElementById('decision-box');
     var dTitle = document.getElementById('decision-title');
@@ -294,7 +313,7 @@ function processData() {
         dBox.style.background = "rgba(255,204,0,0.12)"; dValue.style.color = "var(--yellow)";
         dTitle.innerText = "🟡 今日行動指南 · 噪訊觀望";
         dValue.innerText = "WAITING / 暫停動作";
-        dDesc.innerText = "【夏農資訊熵攔截】目前日線隨機亂度超標，市場多空拉鋸劇烈，屬於無序洗盤期。今天請管住雙手，不要盲目在大洗盤中手動加碼。請明天同一時間繼續打開面板，靜待噪訊冷卻、綠燈重啟。";
+        dDesc.innerText = "【盤中高頻隨機亂度攔截】偵測到當下盤中每分鐘價格出現非理性多空瘋狂拉鋸或洗盤，隨機無序度過大。大家雖然在全力撐盤，但此時局勢混亂。今天請先管住雙手，不要在多空激烈肉搏的子彈滿天飛時進場，靜待亂度冷卻。";
     } else {
         if (currentPrice <= ma20) {
             dBox.style.background = "rgba(52,199,89,0.15)"; dValue.style.color = "var(--green)";
@@ -354,12 +373,19 @@ function parseYahooData(jsonObj) {
         var m = String(localTime.getMonth() + 1).padStart(2, '0');
         var d = String(localTime.getDate()).padStart(2, '0');
         realtimeDate = y + '-' + m + '-' + d;
+        
+        // 【核心提取】：將當天開盤至今，每一分鐘的收盤價數據，全部提取出來供夏農熵計算
+        if (result.indicators && result.indicators.quote && result.indicators.quote[0]) {
+            var minuteCloses = result.indicators.quote[0].close || [];
+            // 過濾掉 null 的無效點，只保留有成交的分鐘價格
+            todayMinutePrices = minuteCloses.filter(function(v) { return v !== null && v > 0; });
+        }
+        
         return true;
     }
     return false;
 }
 
-// 建立可控超時的 fetch 機制
 function fetchWithTimeout(url, options, timeoutMs) {
     return new Promise(function(resolve, reject) {
         var controller = new AbortController();
@@ -403,7 +429,6 @@ function executeSync() {
     bar.style.width = '30%';
     logStatus.innerText = "第一步：同步歷史證券交易所大數據...";
 
-    // 歷史資料加時間戳防快取
     var historyUrl = `https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=0056&start_date=${formatDate(halfYearAgo)}&end_date=${formatDate(today)}&_=${Math.random()}`;
     
     fetch(historyUrl).then(function(res){ return res.json(); }).then(function(res){
@@ -412,22 +437,18 @@ function executeSync() {
             bar.style.width = '60%';
             logStatus.innerText = "第二步：交織智慧雙通道即時網路節點...";
             
-            // Yahoo API 加隨機參數破壞 Proxy 快取，取得真即時數據
             var targetApi = "https://query1.finance.yahoo.com/v8/finance/chart/0056.TW?interval=1m&range=1d&_cache=" + Math.random();
             var urlA = "https://api.allorigins.win/get?url=" + encodeURIComponent(targetApi);
             
-            // 核心優化：限制主通道 A 最多等 1500毫秒 (1.5秒)，超時直接滾去 B 通道
             return fetchWithTimeout(urlA, {}, 1500).then(function(r){ return r.json(); }).then(function(wrapper){
                 var data = JSON.parse(wrapper.contents);
                 if(!parseYahooData(data)) throw new Error("A通道無效值");
                 console.log("快捷通道 A (AllOrigins) 連線成功");
             }).catch(function(err){
-                console.warn("通道 A 延遲觸發 1.5秒硬中斷，切換備援通道 B...", err);
+                console.warn("通道 A 延遲，切換備援通道 B...", err);
                 var urlB = "https://corsproxy.io/?" + encodeURIComponent(targetApi);
-                // 備援通道 B 同樣限制 2000毫秒 逾時
                 return fetchWithTimeout(urlB, {}, 2000).then(function(r){ return r.json(); }).then(function(data){
-                    if(!parseYahooData(data)) throw new Error("B通道解析無效值");
-                    console.log("備援通道 B (Corsproxy.io) 連線成功");
+                    if(!parseYahooData(data)) throw new Error("B通道連線成功");
                 });
             });
         } else {
@@ -438,7 +459,7 @@ function executeSync() {
         logStatus.innerText = "解算完畢，防禦閘門開啟。";
         processData();
     }).catch(function(e){
-        console.error("即時雙代理皆超時，啟動末線保底機制：以交易所最新歷史收盤為準。", e);
+        console.error("即時雙代理皆超時，啟動末線保底機制。", e);
         if(rawHistoryKlines.length > 0) {
             bar.style.width = '100%';
             processData();
