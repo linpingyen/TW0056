@@ -138,7 +138,7 @@
         <div class="diagnostic-panel">
             ⚡ 系統即時日誌：<br>
             • 核心對時狀態：<span id="diag-time">OK</span><br>
-            • 盤中 1m 高頻採樣樣本數：<span id="diag-samples" style="color:var(--blue); font-weight:bold;">0</span> 筆/270筆
+            • 盤中 1m 高頻採樣樣本數：<span id="diag-samples" style="color:var(--blue); font-weight:bold;">0</span> 筆
         </div>
 
         <div class="price-box">
@@ -181,7 +181,6 @@
                 <div class="radar-meta"><h4>週線宏觀動能 RSI (過熱閥值: 70)</h4></div>
                 <div class="radar-value"><div id="rsi-1w-light" class="mini-light"></div>&nbsp;<div id="rsi-1w-text" class="mini-text">-</div></div>
             </div>
-            <!-- 🛠️ 這裡修正了！文字已完美同步變更為 3.50 閾值 -->
             <div class="radar-row">
                 <div class="radar-meta"><h4>盤中即時夏農資訊熵 (洗盤閥值: 3.50)</h4></div>
                 <div class="radar-value"><div id="entropy-light" class="mini-light"></div>&nbsp;<div id="entropy-text" class="mini-text">-</div></div>
@@ -226,7 +225,8 @@ function calculateRSI(prices, periods) {
 }
 
 function calculateShannonEntropy1m(minutePrices) {
-    if (!minutePrices || minutePrices.length < 10) return 2.0;
+    // 樣本不足 10 筆代表休市、收盤時間或盤前，回傳特殊的 -1 標記
+    if (!minutePrices || minutePrices.length < 10) return -1;
     
     var returns = [];
     for(var i = 1; i < minutePrices.length; i++) {
@@ -234,6 +234,8 @@ function calculateShannonEntropy1m(minutePrices) {
             returns.push(Math.log(minutePrices[i] / minutePrices[i-1]));
         }
     }
+    
+    if (returns.length === 0) return -1;
     
     var bins = {}; var binSize = 0.0005; 
     returns.forEach(function(r) { 
@@ -294,9 +296,12 @@ function processData() {
     }
     var rsi1w = calculateRSI(weekPrices, 14);
 
+    // 判斷夏農熵是否無資料
+    var isNoData = (entropy === -1);
+
     var status1d = "GREEN";
     if (rsi1d >= 65) status1d = "RED";
-    else if (entropy > 3.50) status1d = "YELLOW"; 
+    else if (isNoData || entropy > 3.50) status1d = "YELLOW"; // 無資料時強制顯示黃色
 
     var status1w = "GREEN";
     if (rsi1w >= 70) status1w = "RED";
@@ -306,7 +311,13 @@ function processData() {
 
     updateRow('rsi-1d-light', 'rsi-1d-text', rsi1d.toFixed(1), rsi1d >= 65 ? '--red' : '--green');
     updateRow('rsi-1w-light', 'rsi-1w-text', rsi1w.toFixed(1), rsi1w >= 70 ? '--red' : '--green');
-    updateRow('entropy-light', 'entropy-text', entropy.toFixed(2), entropy > 3.50 ? '--yellow' : '--green');
+    
+    // 下方動態幾何指標燈號渲染
+    if (isNoData) {
+        updateRow('entropy-light', 'entropy-text', "暫無數據", '--yellow');
+    } else {
+        updateRow('entropy-light', 'entropy-text', entropy.toFixed(2), entropy > 3.50 ? '--yellow' : '--green');
+    }
 
     var dBox = document.getElementById('decision-box');
     var dTitle = document.getElementById('decision-title');
@@ -318,6 +329,12 @@ function processData() {
         dTitle.innerText = "🚨 今日行動指南 · 極端過熱";
         dValue.innerText = "FORBIDDEN / 嚴禁追高";
         dDesc.innerText = "【殖利率嚴重高估】目前 0056 在時空象限已衝破超買天花板。此時溢價極高，買入將嚴重稀釋配息殖利率。新台幣現金子彈請死死鎖在銀行帳戶中。請繼續保持天天看燈的紀律，耐心等待這盞紅燈熄滅轉綠的物理時刻。";
+    } else if (isNoData) {
+        // 【新增安全閘門】：收盤時間暫無盤中數據時，強制顯示黃色指南
+        dBox.style.background = "rgba(255,204,0,0.12)"; dValue.style.color = "var(--yellow)";
+        dTitle.innerText = "🟡 今日行動指南 · 數據待校準";
+        dValue.innerText = "WAITING / 暫無盤中數據";
+        dDesc.innerText = "【收盤時間暫無盤中數據】目前處於非交易時段（或開盤初期採樣不足），高頻分鐘數據尚未生成。系統為了維護您的資產安全，已自動啟動黃燈防禦。請於台股開盤時間（週一至週五 09:00~13:30）重新對時，以獲取最準確的即時波段亂度與獵殺指令。";
     } else if (status1d === "YELLOW") {
         dBox.style.background = "rgba(255,204,0,0.12)"; dValue.style.color = "var(--yellow)";
         dTitle.innerText = "🟡 今日行動指南 · 噪訊觀望";
@@ -332,7 +349,7 @@ function processData() {
         } else {
             dBox.style.background = "rgba(52,199,89,0.06)"; dValue.style.color = "#8e8e93";
             dTitle.innerText = "🟢 今日行動指南 · 准許獵殺 (觀望中)";
-            dValue.innerText = "STANDBY / 價格尚不夠低";
+            dValue.innerText = "STANDBY / 價格尚不夠划算";
             dDesc.innerText = `【大環境安全，等待回檔】目前 0056 雙時空結構乾淨安全，本月准許進場。然而，今日即時成交價 ($${currentPrice.toFixed(2)}) 仍處於 20日基準線 ($${ma20.toFixed(2)}) 之上，意味著價格還不夠划算。今天先不買，請明天繼續監控，等待價格跌破基準線的扳機時刻。`;
         }
     }
